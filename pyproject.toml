@@ -12,7 +12,11 @@ dependencies = [
   "trossen-slate>=0.0.3; sys_platform == 'linux'",
 ]
 
+[tool.uv]
+constraint-dependencies = ["trossen-arm>=1.11,<1.12"]
+
 [tool.uv.sources]
+lerobot = { path = "../lerobot-new", editable = true }
 lerobot_robot_trossen = { workspace = true }
 lerobot_teleoperator_trossen = { workspace = true }
 
