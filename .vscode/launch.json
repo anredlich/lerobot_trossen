@@ -1,0 +1,78 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "lerobot_teleoperate Solo",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "lerobot.scripts.lerobot_teleoperate",
+            "cwd": "${workspaceFolder:lerobot_trossen (plugin)}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--robot.type=widowxai_follower_robot",
+                "--robot.ip_address=192.168.1.3",
+                "--robot.id=follower",
+                "--teleop.type=widowxai_leader_teleop",
+                "--teleop.ip_address=192.168.1.2",
+                "--teleop.id=leader",
+                "--robot.cameras={ cam_right_wrist: {type: intelrealsense, serial_number_or_name: \"260522279125\", width: 640, height: 480, fps: 30}, cam_left_wrist: {type: intelrealsense, serial_number_or_name: \"260522278146\", width: 640, height: 480, fps: 30}, cam_high: {type: intelrealsense, serial_number_or_name: \"260522274929\", width: 640, height: 480, fps: 30} }",
+                "--teleop_time_s=60",
+                "--display_data=true"
+            ]
+        },
+        {
+            "name": "lerobot_record Solo",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "lerobot.scripts.lerobot_record",
+            "cwd": "${workspaceFolder:lerobot_trossen (plugin)}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--robot.type=widowxai_follower_robot",
+                "--robot.ip_address=192.168.1.3",
+                "--robot.id=follower",
+                "--robot.cameras={ cam_right_wrist: {type: intelrealsense, serial_number_or_name: \"260522279125\", width: 640, height: 480, fps: 30}, cam_left_wrist: {type: intelrealsense, serial_number_or_name: \"260522278146\", width: 640, height: 480, fps: 30}, cam_high: {type: intelrealsense, serial_number_or_name: \"260522274929\", width: 640, height: 480, fps: 30} }",
+                "--teleop.type=widowxai_leader_teleop",
+                "--teleop.ip_address=192.168.1.2",
+                "--teleop.id=leader",
+                "--display_data=true",
+                "--dataset.repo_id=anredlich/cube-pickup-test",
+                "--resume=false",
+                "--dataset.fps=30",
+                "--dataset.episode_time_s=30",
+                "--dataset.reset_time_s=15",
+                "--dataset.num_episodes=10",
+                "--dataset.push_to_hub=false",
+                "--dataset.single_task=Grab the cube",
+                "--dataset.root=/home/trossen/lerobot_trossen/datasets/cube-pickup-test",
+            ]
+        },
+        {
+            "name": "lerobot_dataset_viz visualize dataset",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "lerobot.scripts.lerobot_dataset_viz",
+            "cwd": "${workspaceFolder:lerobot_trossen (plugin)}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--repo-id=anredlich/cube-pickup-test",
+                "--root=/home/trossen/lerobot_trossen/datasets/cube-pickup-test",
+                "--episode-index=2"
+            ]
+        }
+    ]
+}
