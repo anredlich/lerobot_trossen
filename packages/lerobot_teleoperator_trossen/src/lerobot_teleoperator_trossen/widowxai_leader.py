@@ -80,6 +80,29 @@ class WidowXAILeaderTeleop(Teleoperator):
             blocking=True,
         )
 
+    def go_home(self, goal_time: float = 3.0) -> None:
+        """Move the leader to its staged (home) pose in position mode (stiff). -anr"""
+        self.driver.set_all_modes(trossen_arm.Mode.position)
+        self.driver.set_all_positions(
+            self.config.staged_positions,
+            goal_time=goal_time,
+            blocking=True,
+        )
+
+    def hold(self) -> None:
+        """Freeze the leader stiff at its CURRENT position (position mode), so it can't
+        drift during the reset wait and make the follower jump when teleop resumes. -anr"""
+        current = self.driver.get_all_positions()
+        self.driver.set_all_modes(trossen_arm.Mode.position)
+        self.driver.set_all_positions(current, goal_time=1.0, blocking=True)
+
+    def release(self) -> None:
+        """Switch to gravity-comp / backdrivable (external_effort) so the operator can
+        teleoperate the leader by hand. Mirrors the tail of configure(). -anr"""
+        self.driver.set_all_modes(trossen_arm.Mode.external_effort)
+        n = len(self.config.joint_names)
+        self.driver.set_all_external_efforts([0.0] * n, goal_time=0.0, blocking=True)
+
     def get_action(self) -> dict[str, float]:
         start = time.perf_counter()
         action = self.driver.get_all_positions()

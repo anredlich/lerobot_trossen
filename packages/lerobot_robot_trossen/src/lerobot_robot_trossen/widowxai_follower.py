@@ -118,6 +118,17 @@ class WidowXAIFollower(Robot):
             blocking=True,
         )
 
+    # --- ADD go_home() HERE --- anr
+    def go_home(self, goal_time: float = 3.0) -> None:
+        """Move the follower to its staged (home) pose in position mode and hold.
+        Used for between-episode homing during recording. -anr"""
+        self.driver.set_all_modes(trossen_arm.Mode.position)
+        self.driver.set_all_positions(
+            self.config.staged_positions,
+            goal_time=goal_time,
+            blocking=True,
+        )
+
     def get_observation(self) -> dict[str, Any]:
         if not self.is_connected:
             raise DeviceNotConnectedError(f"{self} is not connected.")
