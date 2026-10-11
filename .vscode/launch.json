@@ -51,18 +51,24 @@
                 "--teleop.id=leader",
                 "--teleop.staged_positions=[0, 0.261799, 0.261799, 0, 0, 0, 0.04]",                
                 "--display_data=true",
-                "--dataset.repo_id=anredlich/cube-pickup-test",
+                "--dataset.repo_id=anredlich/cube-place-test",
                 "--resume=false",
                 "--dataset.fps=30",
                 "--dataset.episode_time_s=30",
                 "--dataset.reset_time_s=15",
                 "--dataset.num_episodes=10",
                 "--dataset.push_to_hub=false",
-                "--dataset.single_task=Grab the cube",
-                "--dataset.root=/home/trossen/lerobot_trossen/datasets/cube-pickup-test",
+                "--dataset.single_task=Place the cube",
+                "--dataset.root=/home/trossen/lerobot_trossen/datasets/cube-place-test",
                 "--dataset.output_version=v2.1",
                 "--dataset.v21_joint_names=[right_joint_0, right_joint_1, right_joint_2, right_joint_3, right_joint_4, right_joint_5, right_joint_6]",
-            ]
+            ],
+            "env": {
+                "LEROBOT_KOKORO_MODEL": "/home/trossen/models/kokoro/kokoro-v1.0.onnx",
+                "LEROBOT_KOKORO_VOICES": "/home/trossen/models/kokoro/voices-v1.0.bin",
+                "LEROBOT_KOKORO_VOICE": "af_aoede",
+                "LEROBOT_APLAY_DEVICE": "default"
+            },            
         },
         {
             "name": "lerobot_dataset_viz visualize dataset",
