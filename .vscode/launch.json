@@ -60,6 +60,8 @@
                 "--dataset.push_to_hub=false",
                 "--dataset.single_task=Grab the cube",
                 "--dataset.root=/home/trossen/lerobot_trossen/datasets/cube-pickup-test",
+                "--dataset.output_version=v2.1",
+                "--dataset.v21_joint_names=[right_joint_0, right_joint_1, right_joint_2, right_joint_3, right_joint_4, right_joint_5, right_joint_6]",
             ]
         },
         {
