@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trossen_surge_common"
+version = "0.1.0"
+description = "Shared glue for the Trossen WidowX-AI-Solo + Alt-Bionics Surge hand lerobot integration"
+authors = [{ name = "Alexander Redlich" }]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+# Pure Python (math + dict transforms only); no runtime dependencies.
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["trossen_surge_common"]

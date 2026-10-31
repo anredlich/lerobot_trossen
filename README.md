@@ -6,6 +6,29 @@ This package contains LeRobot integrations for the Trossen AI series of robots.
 See the [LeRobot documentation](https://huggingface.co/docs/lerobot) for details on more advanced usage like using the HuggingFace Hub, model training, and using different teleoperation methods.
 See the [Trossen AI documentation](https://docs.trossenrobotics.com/trossen_arm/main/tutorials/lerobot_plugin.html) for details on configuration and usage of Trossen AI robots with LeRobot.
 
+## Repository Layout
+
+This project spans three repositories that are expected to sit **side by side**
+in the same parent directory (the `uv` path sources below assume relative
+locations like `../lerobot-new`):
+
+```
+<parent>/
+├── lerobot-new/        # the LeRobot fork (workflow + TTS live here)
+├── lerobot_trossen/    # this repo — the lead/driver workspace
+└── Alt-Bionics-SDK/    # the Surge hand + Manus glove package (altbionics)
+```
+
+`uv sync` is run from **`lerobot_trossen/`**, which owns the shared environment:
+it installs its own workspace packages (`packages/*`) plus `lerobot-new` and
+`altbionics` via path sources in `pyproject.toml`.
+
+**Not carried by `git clone`** (set these up per machine):
+- **TTS voice model** — the Kokoro `.onnx` model files and `LEROBOT_KOKORO_*`
+  environment variables. See the Text-to-Speech section in `lerobot-new`'s README.
+- **Hardware config** — arm IP addresses, the Surge hand's FTDI serial, the
+  Manus SDK `.so` path, and camera serial numbers are rig-specific.
+
 ## Installation
 
 We use `uv` to manage our dependencies.
@@ -24,7 +47,8 @@ git clone https://github.com/TrossenRobotics/lerobot_trossen.git
 uv sync
 
 # Verify installation
-uv pip list | grep trossen
+#uv pip list | grep trossen ->
+uv pip list | grep -iE "trossen|surge"
 # lerobot-robot-trossen
 # lerobot-teleoperator-trossen
 # trossen-arm
