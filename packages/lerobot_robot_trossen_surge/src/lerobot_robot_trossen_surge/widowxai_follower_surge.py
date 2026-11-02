@@ -54,6 +54,8 @@ class WidowXAIFollowerSurge(Robot):
         super().__init__(config)
         self.config = config
 
+        self._hand_read_mode = getattr(config, "hand_read_mode", "per_joint")
+
         # Composition: the inner arm follower is the plain Trossen class, used
         # exactly as-is. Our config subclasses its config, so it carries every
         # field the inner needs.
@@ -104,6 +106,14 @@ class WidowXAIFollowerSurge(Robot):
         self._stable_ticks: dict[str, int] = {c: 0 for c in HAND_JOINT_CODES}
         self._settled_err: dict[str, list[float]] = {c: [] for c in HAND_JOINT_CODES}
         self._settled_state: dict[str, list[float]] = {c: [] for c in HAND_JOINT_CODES}
+
+        # --- Step-2 responsiveness diagnostics (behind _diag_hand) ---
+        # Offset-agnostic (works despite the Manus-mode action/state frame offset):
+        # we correlate the DERIVATIVES (Δ per tick) of command vs measured state.
+        self._resp_window = 150            # ticks per responsiveness report (~12s @ 12Hz)
+        self._resp_max_lag = 8             # ticks to search for best Δ-alignment
+        self._cmd_hist: dict[str, list[float]] = {c: [] for c in HAND_JOINT_CODES}
+        self._state_hist: dict[str, list[float]] = {c: [] for c in HAND_JOINT_CODES}
 
     # -- feature schema (dataset / Rerun columns) ----------------------------
 
@@ -213,8 +223,15 @@ class WidowXAIFollowerSurge(Robot):
         # through small valid angles, so the held value is already near the truth
         # and self-corrects on the next valid read.
         self._read_count += 1
+        # burst mode: one pipelined read of all 6; else per-joint (current path).
+        if self._hand_read_mode == "burst":
+            vals = self._hand.get_angles_burst(HAND_JOINT_CODES, timeout=0.08)
+        else:
+            vals = None
         for code in HAND_JOINT_CODES:
-            val = self._hand.get_angle_fast(code, timeout=0.05)
+            #val = self._hand.get_angle_fast(code, timeout=0.05)
+            val = vals[code] if vals is not None else \
+                self._hand.get_angle_fast(code, timeout=0.05)
             if val is not None and -5.0 <= val <= 130.0:
                 self._last_hand_deg[code] = val
             else:
@@ -229,6 +246,11 @@ class WidowXAIFollowerSurge(Robot):
             obs[f"hand_{code}.pos"] = deg_to_rad(self._last_hand_deg[code])
 
         if self._diag_hand:
+            for code in HAND_JOINT_CODES:
+                self._cmd_hist[code].append(self._last_hand_sent_deg[code])
+                self._state_hist[code].append(self._last_hand_deg[code])
+            if len(self._cmd_hist[HAND_JOINT_CODES[0]]) >= self._resp_window:
+                self._diag_responsiveness()
             self._diag_static_accuracy()
 
         return obs
@@ -264,6 +286,55 @@ class WidowXAIFollowerSurge(Robot):
             total = self._read_count * len(HAND_JOINT_CODES)
             print("  HAND static (deg):  " + "  ".join(parts)
                   + f"   | bad reads: {bad}/{total}", flush=True)
+
+    def _diag_responsiveness(self) -> None:
+        """Per-joint responsiveness over a window, OFFSET-AGNOSTIC (the Manus-mode
+        action/state offset is constant, so it vanishes under differencing):
+          lag  = tick shift (of Δstate vs Δcommand) that maximises their
+                 correlation -> the actuator+read delay, in ticks.
+          r    = correlation at that lag (how cleanly state follows command;
+                 ~1 = tight tracking, low = noisy/unrelated).
+          trk  = sum|Δstate| / sum|Δcommand| (how COMPLETELY state follows:
+                 ~1 faithful, <1 blocked/contact, >1 overshoot).
+        Diagnostic only; no effect on recorded state."""
+        parts = []
+        for code in HAND_JOINT_CODES:
+            cmd = self._cmd_hist[code]
+            st = self._state_hist[code]
+            # derivatives (per-tick change) remove the constant offset.
+            dc = [cmd[i] - cmd[i - 1] for i in range(1, len(cmd))]
+            ds = [st[i] - st[i - 1] for i in range(1, len(st))]
+            cmd_motion = sum(abs(x) for x in dc)
+            st_motion = sum(abs(x) for x in ds)
+            if cmd_motion < 1e-6:
+                parts.append(f"{code} (still)")
+                cmd.clear(); st.clear()
+                continue
+            trk = st_motion / cmd_motion
+            # best lag: shift ds back by L ticks, correlate with dc.
+            best_lag, best_r = 0, -2.0
+            for L in range(0, self._resp_max_lag + 1):
+                a = dc[: len(dc) - L] if L else dc
+                b = ds[L:] if L else ds
+                r = _corr(a, b)
+                if r > best_r:
+                    best_r, best_lag = r, L
+            parts.append(f"{code} lag{best_lag} r{best_r:+.2f} trk{trk:.2f}")
+            cmd.clear(); st.clear()
+        print("  HAND resp:  " + "  ".join(parts), flush=True)
+
+def _corr(a: list[float], b: list[float]) -> float:
+    """Pearson correlation of two equal-length sequences; 0 if degenerate."""
+    n = min(len(a), len(b))
+    if n < 3:
+        return 0.0
+    a, b = a[:n], b[:n]
+    ma = sum(a) / n
+    mb = sum(b) / n
+    num = sum((a[i] - ma) * (b[i] - mb) for i in range(n))
+    da = sum((x - ma) ** 2 for x in a) ** 0.5
+    db = sum((x - mb) ** 2 for x in b) ** 0.5
+    return num / (da * db) if da > 0 and db > 0 else 0.0
 
     # def get_observation(self) -> dict[str, Any]:
     #     # snapshot of last tick's sent command, so the spike print can say whether

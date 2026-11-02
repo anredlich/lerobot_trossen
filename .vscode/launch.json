@@ -47,6 +47,7 @@
                 "--robot.ip_address=192.168.1.3",
                 "--robot.id=follower",
                 "--robot.staged_positions=[0, 0.261799, 0.261799, 0, 0, 0, 0.04]",
+                //"--robot.hand_read_mode=burst",
                 "--teleop.type=widowxai_leader_teleop_surge",
                 "--teleop.ip_address=192.168.1.2",
                 "--teleop.id=leader",

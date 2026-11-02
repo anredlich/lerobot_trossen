@@ -41,3 +41,12 @@ class WidowXAIFollowerSurgeConfig(WidowXAIFollowerConfig):
     # every step. The gripper motor is unplugged, so this is inert; 0.0 = closed
     # and in range. Change only if a different safe constant is ever needed.
     gripper_pin_pos: float = 0.0
+
+    # Hand read strategy for get_observation:
+    #   "per_joint" — read the 6 joints one AT+GJA? at a time (default, proven).
+    #   "burst"     — fire all 6 queries, then read replies in order (tighter
+    #                 simultaneity; on this firmware NOT faster since the hand
+    #                 serializes GJA, but samples the joints closer in time).
+    hand_read_mode: str = "per_joint"
+
+    
