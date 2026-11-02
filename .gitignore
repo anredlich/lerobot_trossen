@@ -210,3 +210,4 @@ __marimo__/
 outputs/
 *.code-workspace
 datasets/
+log.txt

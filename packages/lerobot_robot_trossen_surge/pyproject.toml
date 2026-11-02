@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lerobot_robot_trossen_surge"
+description = "WidowX AI Solo follower + Alt-Bionics Surge hand robot for LeRobot"
+version = "0.1.0"
+authors = [{ name = "Alexander Redlich" }]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "lerobot[intelrealsense,core-scripts]>=0.6.0",
+  "trossen_arm>=1.9.0",
+  "lerobot_robot_trossen>=0.1.0",
+  "trossen_surge_common>=0.1.0",
+  "altbionics>=0.1.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["lerobot_robot_trossen_surge"]
