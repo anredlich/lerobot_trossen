@@ -323,6 +323,16 @@ class WidowXAIFollowerSurge(Robot):
             cmd.clear(); st.clear()
         print("  HAND resp:  " + "  ".join(parts), flush=True)
 
+    def move_to_action(self, action: dict[str, Any], goal_time: float = 3.0) -> None:
+        """Startup alignment: slew the ARM slowly to the leader's current arm pose
+        so teleop begins without a jerk. Reuses split_combined_action so the gripper
+        is pinned exactly as in send_action; the 6 hand keys are ignored (the hand
+        isn't slewed here). Delegates the slow arm move to the inner follower. -anr"""
+        arm_cmd, _hand_deg = split_combined_action(
+            action, self.config.joint_names, self.config.gripper_pin_pos
+        )
+        self._arm.move_to_action(arm_cmd, goal_time=goal_time)
+        
 def _corr(a: list[float], b: list[float]) -> float:
     """Pearson correlation of two equal-length sequences; 0 if degenerate."""
     n = min(len(a), len(b))

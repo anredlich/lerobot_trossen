@@ -30,3 +30,12 @@ class WidowXAILeaderTeleopConfig(TeleoperatorConfig):
     staged_positions: list[float] = field(
         default_factory=lambda: [0, np.pi / 3, np.pi / 6, np.pi / 5, 0, 0, 0]
     )
+
+    # Optional override for the leader end-effector palm mass (kg) in the gravity-comp
+    # model. None = use the stock Trossen preset unchanged. Set lower to model a
+    # removed/lighter gripper so the leader neither floats nor droops. Calibrated for
+    # the gripper-motor-UNPLUGGED state (fingers already zeroed by the driver). -anr
+    end_effector_palm_mass: float | None = None
+
+    freeze_wrist: bool = False
+    frozen_wrist_indices: list[int] = field(default_factory=lambda: [3, 4, 5])

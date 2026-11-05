@@ -1,8 +1,9 @@
 import logging
 from typing import Optional
+import math
 
 from altbionics import ik
-from altbionics.glove import ManusGlove
+from altbionics.glove import ManusGlove, quat_to_euler_deg
 from lerobot.teleoperators.teleoperator import Teleoperator
 from lerobot_teleoperator_trossen.widowxai_leader import WidowXAILeaderTeleop
 from trossen_surge_common.surge_dataset import (
@@ -14,6 +15,17 @@ from trossen_surge_common.surge_dataset import (
 from lerobot_teleoperator_trossen_surge.config_widowxai_leader_surge import (
     WidowXAILeaderTeleopSurgeConfig,
 )
+
+# --- glove-roll -> arm joint 5 (experimental, minimal) ----------------------
+# Add a small fraction of the glove's whole-hand ROLL onto leader joint 5, in
+# place under the same ".pos" key so lerobot sees an ordinary leader joint. No
+# zeroing/clamping yet — intentionally minimal to observe the raw effect. -anr
+INJECT_GLOVE_ROLL = True
+ROLL_SCALE = 1.0 #0.1   # fraction of hand-roll (rad) added to joint 5; try smaller/negative
+INJECT_GLOVE_PITCH = True
+PITCH_SCALE = 1.0 #0.1   # fraction of hand-pitch (rad) added to joint 4; try smaller/negative
+INJECT_GLOVE_YAW = True
+YAW_SCALE = 1.0 #0.25   # fraction of hand-yaw (rad) added to joint 4; try smaller/negative
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +71,9 @@ class WidowXAILeaderTeleopSurge(Teleoperator):
 
         self._glove_started = False
 
+        # Orientation zero-reference (degrees), latched by on_start() -anr
+        self._yaw_ref_deg: float = 0.0
+
     # -- feature schema (dataset / Rerun columns) ----------------------------
 
     @property
@@ -98,6 +113,21 @@ class WidowXAILeaderTeleopSurge(Teleoperator):
         if hasattr(self._arm, "configure"):
             self._arm.configure()
 
+    def on_start(self) -> None:
+        """Operator-pressed-start hook. Generic seam for any start-time setup;
+        today it latches the current glove orientation as the zero reference so
+        the hand's attitude at start maps to zero offset on all injected axes.
+        Safe to call repeatedly (each call re-zeros). No-op if no glove frame
+        yet (the next get_action will auto-latch instead). -anr"""
+        q = self._glove.read_hand_rotation()
+        if q is None:
+            logger.info(f"{self}: on_start() — no glove frame yet; will auto-zero on first action.")
+            return
+        roll_ref_deg, pitch_ref_deg, self._yaw_ref_deg = quat_to_euler_deg(q)
+        logger.info(
+            f"{self}: yaw orientation zeroed = {self._yaw_ref_deg:.1f} deg)."
+        )
+
     def disconnect(self) -> None:
         if self._owns_glove and self._glove_started:
             self._glove.stop()
@@ -127,6 +157,24 @@ class WidowXAILeaderTeleopSurge(Teleoperator):
         # 3. drop the gripper; keep the 6 arm joints.
         action = {k: arm_action[k] for k in self._arm_pos_keys}
 
+        # ---- glove roll/pitch -> arm joints 5/4 (minimal; see constants) ----
+        if INJECT_GLOVE_ROLL or INJECT_GLOVE_PITCH or INJECT_GLOVE_YAW:
+            q = self._glove.read_hand_rotation()   # (w,x,y,z) or None until first frame
+            if q is not None:
+                roll_deg, pitch_deg, yaw_deg = quat_to_euler_deg(q)
+                if INJECT_GLOVE_ROLL:
+                    j5 = self._arm_pos_keys[-1]
+                    action[j5] = action[j5] + math.radians(roll_deg) * ROLL_SCALE
+                if INJECT_GLOVE_YAW:
+                    j4 = self._arm_pos_keys[-2]
+                    d_yaw = (yaw_deg - self._yaw_ref_deg + 180.0) % 360.0 - 180.0
+                    action[j4] = action[j4] - math.radians(d_yaw) * YAW_SCALE
+                    print(f"yaw-ref: {d_yaw} yaw: {yaw_deg} yaw_ref: {self._yaw_ref_deg}")                
+                if INJECT_GLOVE_PITCH:
+                    j3 = self._arm_pos_keys[-3]
+                    action[j3] = action[j3] - math.radians(pitch_deg) * PITCH_SCALE
+        # --------------------------------------------------------------------
+                
         # ---- calibration seam (future [K] in-situ calibration) -------------
         # The raw glove sensor positions are read here, before IK. A future
         # calibration mode would tap `sensors` (and the hand's commanded/true

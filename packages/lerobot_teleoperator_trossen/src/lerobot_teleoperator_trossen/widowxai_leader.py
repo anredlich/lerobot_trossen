@@ -49,6 +49,18 @@ class WidowXAILeaderTeleop(Teleoperator):
             serv_ip=self.config.ip_address,
             clear_error=True,
         )
+        # Override the EE gravity-comp model if requested, so compensation matches
+        # a modified gripper. Live update after configure; palm COM (origin_xyz) is
+        # left at the preset value, and finger masses are left as the driver set them
+        # (0 when the gripper motor is unplugged). -anr
+        if self.config.end_effector_palm_mass is not None:
+            ee = self.driver.get_end_effector()
+            ee.palm.mass = self.config.end_effector_palm_mass
+            self.driver.set_end_effector(ee)
+            logger.info(
+                f"{self} end-effector palm mass overridden to "
+                f"{self.config.end_effector_palm_mass:.3f} kg"
+            )
         if not self.is_calibrated and calibrate:
             self.calibrate()
 
@@ -64,6 +76,22 @@ class WidowXAILeaderTeleop(Teleoperator):
         # Trossen Arm robots do not require calibration
         pass
 
+    # def configure(self) -> None:
+    #     self.driver.set_all_modes(trossen_arm.Mode.position)
+    #     # Move the arm to the staged positions
+    #     self.driver.set_all_positions(
+    #         self.config.staged_positions,
+    #         goal_time=2.0,
+    #         blocking=True,
+    #     )
+    #     self.driver.set_all_modes(trossen_arm.Mode.external_effort)
+    #     # Set all external efforts to 0.0 to enable gravity compensation
+    #     self.driver.set_all_external_efforts(
+    #         [0.0] * len(self.config.joint_names),
+    #         goal_time=0.0,
+    #         blocking=True,
+    #     )
+
     def configure(self) -> None:
         self.driver.set_all_modes(trossen_arm.Mode.position)
         # Move the arm to the staged positions
@@ -72,13 +100,34 @@ class WidowXAILeaderTeleop(Teleoperator):
             goal_time=2.0,
             blocking=True,
         )
-        self.driver.set_all_modes(trossen_arm.Mode.external_effort)
+
+        frozen = set(self.config.frozen_wrist_indices) if self.config.freeze_wrist else set()
+        if frozen:
+            # Per-joint modes: frozen wrist -> position (stiff, held at `hold`),
+            # all other joints -> external_effort (gravity-comp / backdrivable). -anr
+            n = len(self.config.joint_names)
+            modes = [
+                trossen_arm.Mode.position if i in frozen
+                else trossen_arm.Mode.external_effort
+                for i in range(n)
+            ]
+            self.driver.set_joint_modes(modes)
+            logger.info(f"{self} wrist frozen at staged values; "
+                        f"modes: {self.driver.get_modes()}")
+        else:
+            self.driver.set_all_modes(trossen_arm.Mode.external_effort)
+
         # Set all external efforts to 0.0 to enable gravity compensation
-        self.driver.set_all_external_efforts(
-            [0.0] * len(self.config.joint_names),
-            goal_time=0.0,
-            blocking=True,
-        )
+        if frozen:
+            for i in range(len(self.config.joint_names)):
+                    if i not in frozen:
+                        self.driver.set_joint_external_effort(i, 0.0, goal_time=0.0, blocking=True)
+        else:
+            self.driver.set_all_external_efforts(
+                [0.0] * len(self.config.joint_names),
+                goal_time=0.0,
+                blocking=True,
+            )
 
     def go_home(self, goal_time: float = 3.0) -> None:
         """Move the leader to its staged (home) pose in position mode (stiff). -anr"""
