@@ -273,3 +273,12 @@ class WidowXAIFollower(Robot):
             cam.disconnect()
 
         logger.info(f"{self} disconnected.")
+
+    def move_to_action(self, action: dict[str, float], goal_time: float = 3.0) -> None:
+        """Slew to a given {joint.pos: val} pose slowly (blocking), for startup
+        alignment to the leader so teleop begins without a jerk. -anr"""
+        goal_pos = {k.removesuffix(".pos"): v for k, v in action.items() if k.endswith(".pos")}
+        self.driver.set_all_positions(
+            [goal_pos[j] for j in self.config.joint_names],
+            goal_time=goal_time, blocking=True,
+        )

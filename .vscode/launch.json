@@ -31,7 +31,7 @@
                 "--teleop.staged_positions=[0, 0.261799, 0.261799, 0, 0, 0, 0.04]",
                 "--teleop.end_effector_palm_mass=0.468",                
                 "--robot.cameras={ cam_right_wrist: {type: intelrealsense, serial_number_or_name: \"260522279125\", width: 640, height: 480, fps: 30, rotation: 180}, cam_left_wrist: {type: intelrealsense, serial_number_or_name: \"260522278146\", width: 640, height: 480, fps: 30}, cam_high: {type: intelrealsense, serial_number_or_name: \"260522274929\", width: 640, height: 480, fps: 30} }",
-                "--teleop_time_s=240",
+                "--teleop_time_s=480",
                 "--display_data=true"
             ]
         },
@@ -55,9 +55,10 @@
                 "--teleop.id=leader",
                 "--teleop.staged_positions=[0, 0.261799, 0.261799, 0, 0, 0, 0.04]",
                 "--teleop.end_effector_palm_mass=0.468",
-                "--teleop.freeze_wrist=true",                
+                "--teleop.freeze_wrist=true",
+                //"--teleop.calibrate_hand=true",
                 "--robot.cameras={ cam_right_wrist: {type: intelrealsense, serial_number_or_name: \"260522279125\", width: 640, height: 480, fps: 30, rotation: 180}, cam_left_wrist: {type: intelrealsense, serial_number_or_name: \"260522278146\", width: 640, height: 480, fps: 30}, cam_high: {type: intelrealsense, serial_number_or_name: \"260522274929\", width: 640, height: 480, fps: 30} }",
-                "--teleop_time_s=480",
+                "--teleop_time_s=1200",
                 "--display_data=true"
             ]
         },

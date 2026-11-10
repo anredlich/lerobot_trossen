@@ -73,6 +73,15 @@ class WidowXAILeaderTeleopSurge(Teleoperator):
 
         # Orientation zero-reference (degrees), latched by on_start() -anr
         self._yaw_ref_deg: float = 0.0
+        self._j0_ref: float = 0.0
+
+        # Hand-IK in-situ calibration (off unless config.calibrate_hand). Holds
+        # all trim/capture state; this wrapper only forwards keys/obs/sensors. -anr
+        self._calib = None
+        if getattr(config, "calibrate_hand", False):
+            from altbionics.calibrate import HandCalibrator
+            self._calib = HandCalibrator()
+            logger.info(f"{self}: hand calibration ON — logging to {self._calib.path}")
 
     # -- feature schema (dataset / Rerun columns) ----------------------------
 
@@ -119,6 +128,11 @@ class WidowXAILeaderTeleopSurge(Teleoperator):
         the hand's attitude at start maps to zero offset on all injected axes.
         Safe to call repeatedly (each call re-zeros). No-op if no glove frame
         yet (the next get_action will auto-latch instead). -anr"""
+        try:
+            self._j0_ref = float(self._arm.get_action().get(self._arm_pos_keys[0], 0.0))
+        except Exception as e:
+            self._j0_ref = 0.0
+            logger.info(f"{self}: on_start() — could not latch joint-0 ref ({e}); using 0.0.")
         q = self._glove.read_hand_rotation()
         if q is None:
             logger.info(f"{self}: on_start() — no glove frame yet; will auto-zero on first action.")
@@ -166,13 +180,22 @@ class WidowXAILeaderTeleopSurge(Teleoperator):
                     j5 = self._arm_pos_keys[-1]
                     action[j5] = action[j5] + math.radians(roll_deg) * ROLL_SCALE
                 if INJECT_GLOVE_YAW:
+                    #j4 = self._arm_pos_keys[-2]
+                    #d_yaw = (yaw_deg - self._yaw_ref_deg + 180.0) % 360.0 - 180.0
+                    #action[j4] = action[j4] - math.radians(d_yaw) * YAW_SCALE
+                    #print(f"yaw-ref: {d_yaw} yaw: {yaw_deg} yaw_ref: {self._yaw_ref_deg}")
+                    # Glove yaw is absolute (world-frame, magnetometer-fused), hence need to subract j0.
                     j4 = self._arm_pos_keys[-2]
+                    j0 = self._arm_pos_keys[0]
                     d_yaw = (yaw_deg - self._yaw_ref_deg + 180.0) % 360.0 - 180.0
-                    action[j4] = action[j4] - math.radians(d_yaw) * YAW_SCALE
-                    print(f"yaw-ref: {d_yaw} yaw: {yaw_deg} yaw_ref: {self._yaw_ref_deg}")                
+                    base_rot = action[j0] - self._j0_ref
+                    action[j4] = action[j4] - math.radians(d_yaw) * YAW_SCALE + base_rot
                 if INJECT_GLOVE_PITCH:
                     j3 = self._arm_pos_keys[-3]
-                    action[j3] = action[j3] - math.radians(pitch_deg) * PITCH_SCALE
+                    j1 = self._arm_pos_keys[1]
+                    j2 = self._arm_pos_keys[2]
+                    darm=action[j2] - action[j1]
+                    action[j3] = action[j3] - math.radians(pitch_deg) * PITCH_SCALE - darm
         # --------------------------------------------------------------------
                 
         # ---- calibration seam (future [K] in-situ calibration) -------------
@@ -181,6 +204,8 @@ class WidowXAILeaderTeleopSurge(Teleoperator):
         # angles) to collect paired samples and refit altbionics.ik. Keep this
         # read/solve split clean so that hook stays easy to add.
         sensors = self._glove.read_sensors()  # list[5] of (x,y,z) m, or None
+        if self._calib is not None:
+            self._calib.set_sensors(sensors)        
         # --------------------------------------------------------------------
 
         # 4. glove -> IK -> hand angles (deg) -> hand_*.pos (radians).
@@ -190,10 +215,28 @@ class WidowXAILeaderTeleopSurge(Teleoperator):
             hand_deg = {c: 0.0 for c in ik.JOINT_CODES}
         else:
             hand_deg = ik.solve(sensors)
+            if self._calib is not None:
+                # trim nudges the IK COMMAND so you can match the finger to your
+                # hand; the recorded target is the measured angle (see observe). -anr
+                for c in ik.JOINT_CODES:
+                    hand_deg[c] = hand_deg[c] + self._calib.trim[c]
         action.update(hand_angles_to_features(hand_deg))
-
+        
         return action
 
     def send_feedback(self, feedback: dict[str, float]) -> None:
         # Not implemented upstream; delegate so behaviour matches the inner leader.
         self._arm.send_feedback(feedback)
+
+    # -- calibration hooks (no-ops unless config.calibrate_hand) -------------
+    def on_key(self, key) -> None:
+        """Raw keypress from the teleop loop. Forwarded to the hand calibrator
+        (trim keys / r reset / Enter capture) when calibration is on. -anr"""
+        if self._calib is not None:
+            self._calib.on_key(key)
+
+    def on_observation(self, obs: dict) -> None:
+        """Each tick's follower observation. Carries the MEASURED hand angle
+        (hand_<code>.pos) the calibrator records as the regression target. -anr"""
+        if self._calib is not None:
+            self._calib.observe(obs)

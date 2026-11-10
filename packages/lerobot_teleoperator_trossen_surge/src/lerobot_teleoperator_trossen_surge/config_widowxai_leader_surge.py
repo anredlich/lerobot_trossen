@@ -32,3 +32,8 @@ class WidowXAILeaderTeleopSurgeConfig(WidowXAILeaderTeleopConfig):
     # altbionics.glove.ManusGlove loads via ctypes. Defaults to the altbionics
     # default; override on the CLI / launch.json for a different install path.
     manus_so_path: str = glove.DEFAULT_SO
+
+
+    # Enable in-situ hand-IK calibration: keyboard trims + Enter-to-capture
+    # (glove xyz -> measured hand angle) during teleop. Off = normal teleop. -anr
+    calibrate_hand: bool = False
