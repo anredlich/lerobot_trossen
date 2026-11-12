@@ -122,6 +122,18 @@ class WidowXAILeaderTeleopSurge(Teleoperator):
         if hasattr(self._arm, "configure"):
             self._arm.configure()
 
+    def go_home(self) -> None:
+        """Move the leader arm to home and hold it stiff; delegates to the inner leader
+        (the same go_home record uses for the plain leader). Pairs with release(). The
+        glove is the operator's hand — nothing to home. -anr"""
+        self._arm.go_home()
+
+    def release(self) -> None:
+        """Make the leader backdrivable so the operator can teleoperate, undoing go_home()'s
+        stiffness. Delegates to the inner leader. record calls this at the start of each
+        episode; without it a leader stiffened during reset stays locked. -anr"""
+        self._arm.release()
+
     def on_start(self) -> None:
         """Operator-pressed-start hook. Generic seam for any start-time setup;
         today it latches the current glove orientation as the zero reference so

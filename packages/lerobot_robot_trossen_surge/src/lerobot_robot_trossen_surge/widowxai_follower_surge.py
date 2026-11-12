@@ -138,6 +138,13 @@ class WidowXAIFollowerSurge(Robot):
         hand = {k: float for k in HAND_FEATURE_KEYS}
         return {**arm, **hand}
 
+    @property
+    def cameras(self) -> dict:
+        """Cameras live on the inner arm (configured via --robot.cameras, connected
+        in self._arm.connect()). Surface them so lerobot's Robot interface — e.g.
+        record's image-writer sizing — sees them, without record special-casing us. -anr"""
+        return self._arm.cameras
+
     # -- lifecycle (explicit delegation) -------------------------------------
 
     @property
@@ -168,6 +175,13 @@ class WidowXAIFollowerSurge(Robot):
         if hasattr(self._arm, "configure"):
             self._arm.configure()
 
+    def go_home(self) -> None:
+        """Move the arm to its staged/home pose and hold it rigid; delegates to the inner
+        Trossen follower (the same go_home record uses for the plain arm). Lets record take
+        its go_home reset branch for surge — arm to staged + rigid, no teleoperating/Rerun
+        during reset. Hand is left at its last pose. -anr"""
+        self._arm.go_home()
+        
     def disconnect(self) -> None:
         if self._owns_hand and self._hand_connected:
             self._hand.disconnect()
