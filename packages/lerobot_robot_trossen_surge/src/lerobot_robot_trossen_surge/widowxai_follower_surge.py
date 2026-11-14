@@ -181,7 +181,9 @@ class WidowXAIFollowerSurge(Robot):
         its go_home reset branch for surge — arm to staged + rigid, no teleoperating/Rerun
         during reset. Hand is left at its last pose. -anr"""
         self._arm.go_home()
-        
+        sent = self._hand.set_fingers({c: 0.0 for c in HAND_JOINT_CODES})
+        self._last_hand_sent_deg = dict(sent)
+
     def disconnect(self) -> None:
         if self._owns_hand and self._hand_connected:
             self._hand.disconnect()
