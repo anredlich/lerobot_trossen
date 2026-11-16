@@ -191,7 +191,7 @@
                 "--robot.max_relative_target=0.5",
                 "--task=pick up mug",
                 "--fps=30",
-                "--duration=20",
+                "--duration=20", //20",
                 //"--interactive=true",
                 "--return_to_initial_position=true",
                 "--display_data=true"
